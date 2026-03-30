@@ -62,7 +62,7 @@ interface AniLibriaTorrent {
 /**
  * Hayase extension для AniLibria
  */
-export default class AniLibria {
+export default new class AniLibria {
     private readonly base = 'https://anilibria.top/api/v1'
 
     /**
@@ -182,4 +182,4 @@ export default class AniLibria {
 
         return 'alt'
     }
-}
+}()

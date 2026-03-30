@@ -1,7 +1,7 @@
 /**
  * Hayase extension для AniLibria
  */
-export default class AniLibria {
+export default new class AniLibria {
     constructor() {
         this.base = 'https://anilibria.top/api/v1';
         /**
@@ -108,4 +108,4 @@ export default class AniLibria {
         }
         return 'alt';
     }
-}
+}();
