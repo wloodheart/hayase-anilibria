@@ -11,7 +11,8 @@ export default new class AniLibria {
             if (!titles.length)
                 return [];
             const searchQuery = titles[0];
-            const url = `${this.base}/anime/catalog/releases?f[search]=${encodeURIComponent(searchQuery)}&limit=10`;
+            // Используем include для получения только нужных полей
+            const url = `${this.base}/anime/catalog/releases?f[search]=${encodeURIComponent(searchQuery)}&limit=10&include=id,name,year,type`;
             try {
                 const response = await fetch(url);
                 if (!response.ok) {
@@ -24,9 +25,9 @@ export default new class AniLibria {
                     return [];
                 }
                 const results = [];
-                // Для каждого найденного релиза получаем торренты
+                // Для каждого найденного релиза получаем торренты с include
                 for (const release of data.data) {
-                    const torrentResults = await this.getReleaseTorrents(release, episode);
+                    const torrentResults = await this.getReleaseTorrents(release.id, release, episode);
                     results.push(...torrentResults);
                 }
                 return results;
@@ -53,7 +54,7 @@ export default new class AniLibria {
          */
         this.test = async () => {
             try {
-                const response = await fetch(`${this.base}/anime/catalog/releases?limit=1`);
+                const response = await fetch(`${this.base}/anime/catalog/releases?limit=1&include=id`);
                 return response.ok;
             }
             catch {
@@ -64,21 +65,23 @@ export default new class AniLibria {
     /**
      * Получение торрентов для релиза
      */
-    async getReleaseTorrents(release, episode) {
+    async getReleaseTorrents(releaseId, release, episode) {
         try {
-            const response = await fetch(`${this.base}/anime/torrents/release/${release.id}`);
+            // Используем include для получения только нужных полей торрентов
+            const include = 'torrents.hash,torrents.size,torrents.magnet,torrents.seeders,torrents.leechers,torrents.completed_times,torrents.quality,torrents.description,torrents.created_at';
+            const response = await fetch(`${this.base}/anime/releases/${releaseId}?include=${include}`);
             if (!response.ok) {
-                console.error(`Failed to fetch torrents for release ${release.id}: ${response.status}`);
+                console.error(`Failed to fetch torrents for release ${releaseId}: ${response.status}`);
                 return [];
             }
             const torrentsData = await response.json();
-            if (!torrentsData.data || !Array.isArray(torrentsData.data)) {
+            if (!torrentsData.torrents || !Array.isArray(torrentsData.torrents)) {
                 return [];
             }
-            return torrentsData.data.map(torrent => this.mapTorrentToResult(torrent, release, episode));
+            return torrentsData.torrents.map(torrent => this.mapTorrentToResult(torrent, release, episode));
         }
         catch (error) {
-            console.error(`Error fetching torrents for release ${release.id}:`, error);
+            console.error(`Error fetching torrents for release ${releaseId}:`, error);
             return [];
         }
     }
