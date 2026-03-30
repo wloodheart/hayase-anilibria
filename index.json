@@ -10,8 +10,8 @@
     "languages": ["RU"],
     "nsfw": false,
     "icon": "https://anilibria.top/favicon.ico",
-    "update": "file:./index.json",
-    "code": "file:./dist/index.js",
+    "update": "gh:wloodheart/hayase-anilibria",
+    "code": "gh:wloodheart/hayase-anilibria/dist/index.js",
     "description": "Поиск аниме через AniLibria API с торрентами"
   }
 ]
