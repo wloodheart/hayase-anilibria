@@ -1,0 +1,17 @@
+[
+  {
+    "name": "AniLibria",
+    "id": "hayase.extension.anilibria",
+    "version": "1.0.0",
+    "type": "torrent",
+    "accuracy": "high",
+    "ratio": 0,
+    "media": "both",
+    "languages": ["RU"],
+    "nsfw": false,
+    "icon": "https://anilibria.top/favicon.ico",
+    "update": "file:./index.json",
+    "code": "file:./dist/index.js",
+    "description": "Поиск аниме через AniLibria API с торрентами"
+  }
+]

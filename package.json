@@ -1,0 +1,21 @@
+{
+  "name": "hayase-anilibria-extension",
+  "version": "1.0.0",
+  "description": "Hayase extension для поиска аниме через AniLibria API",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc --watch"
+  },
+  "keywords": [
+    "hayase",
+    "extension",
+    "anilibria",
+    "anime"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  }
+}
