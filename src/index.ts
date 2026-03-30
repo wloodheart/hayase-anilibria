@@ -28,35 +28,50 @@ export interface TorrentQuery {
 export type SearchFunction = (query: TorrentQuery) => Promise<TorrentResult[]>
 
 // Типы для AniLibria API
-interface AniLibriaTitle {
+interface AniLibriaRelease {
     id: number
-    code?: string
-    titles: {
-        ru: string
-        en: string
-        ja: string
+    alias: string
+    name: {
+        main: string
+        english: string
+        alternative: string | null
     }
-    type: string
     year: number
-    status: string
-    genres: string[]
-    episodes?: number
-    torrents?: {
-        list?: AniLibriaTorrent[]
+    type: {
+        value: string
+        description: string
     }
 }
 
 interface AniLibriaTorrent {
     id: number
     hash: string
+    size: number
+    magnet: string
     seeders: number
     leechers: number
-    downloads: number
-    size: number
-    quality: string
-    series: string
-    url: string
-    magnet?: string
+    completed_times: number
+    quality: {
+        value: string
+    }
+    description: string
+    label: string
+    created_at: string
+    release?: AniLibriaRelease
+}
+
+interface AniLibriaSearchResponse {
+    data: AniLibriaRelease[]
+    meta: {
+        pagination: {
+            total: number
+            count: number
+        }
+    }
+}
+
+interface AniLibriaTorrentsResponse {
+    data: AniLibriaTorrent[]
 }
 
 /**
@@ -72,7 +87,7 @@ export default new class AniLibria {
         if (!titles.length) return []
 
         const searchQuery = titles[0]
-        const url = `${this.base}/title?search=${encodeURIComponent(searchQuery)}&limit=10`
+        const url = `${this.base}/anime/catalog/releases?f[search]=${encodeURIComponent(searchQuery)}&limit=10`
         
         try {
             const response = await fetch(url)
@@ -82,7 +97,7 @@ export default new class AniLibria {
                 return []
             }
 
-            const data = await response.json()
+            const data: AniLibriaSearchResponse = await response.json()
             
             if (!data.data || !Array.isArray(data.data)) {
                 console.error('AniLibria API: invalid response format', data)
@@ -91,9 +106,10 @@ export default new class AniLibria {
 
             const results: TorrentResult[] = []
 
-            for (const title of data.data) {
-                const titleResults = this.extractTorrents(title, episode)
-                results.push(...titleResults)
+            // Для каждого найденного релиза получаем торренты
+            for (const release of data.data) {
+                const torrentResults = await this.getReleaseTorrents(release, episode)
+                results.push(...torrentResults)
             }
 
             return results
@@ -122,7 +138,7 @@ export default new class AniLibria {
      */
     test = async (): Promise<boolean> => {
         try {
-            const response = await fetch(`${this.base}/title?limit=1`)
+            const response = await fetch(`${this.base}/anime/catalog/releases?limit=1`)
             return response.ok
         } catch {
             return false
@@ -130,63 +146,63 @@ export default new class AniLibria {
     }
 
     /**
-     * Извлечение торрентов из тайтла
+     * Получение торрентов для релиза
      */
-    private extractTorrents(title: AniLibriaTitle, episode?: number): TorrentResult[] {
-        const torrents = title.torrents?.list
-        if (!torrents || torrents.length === 0) {
-            // Если торрентов нет, возвращаем заглушку с ссылкой на тайтл
-            return [{
-                title: title.titles.ru || title.titles.en || '',
-                link: `https://anilibria.top/title/${title.code || title.id}`,
-                hash: '',
-                seeders: 0,
-                leechers: 0,
-                downloads: 0,
-                size: 0,
-                date: new Date(),
-                verified: false,
-                type: 'alt',
-                accuracy: 'medium'
-            }]
+    private async getReleaseTorrents(release: AniLibriaRelease, episode?: number): Promise<TorrentResult[]> {
+        try {
+            const response = await fetch(`${this.base}/anime/torrents/release/${release.id}`)
+            
+            if (!response.ok) {
+                console.error(`Failed to fetch torrents for release ${release.id}: ${response.status}`)
+                return []
+            }
+
+            const torrentsData: AniLibriaTorrentsResponse = await response.json()
+            
+            if (!torrentsData.data || !Array.isArray(torrentsData.data)) {
+                return []
+            }
+
+            return torrentsData.data.map(torrent => this.mapTorrentToResult(torrent, release, episode))
+        } catch (error) {
+            console.error(`Error fetching torrents for release ${release.id}:`, error)
+            return []
         }
+    }
 
-        return torrents.map((torrent) => {
-            const result: TorrentResult = {
-                title: `${title.titles.ru || title.titles.en || ''} [${torrent.quality}]`,
-                link: torrent.url,
-                hash: torrent.hash,
-                seeders: torrent.seeders,
-                leechers: torrent.leechers,
-                downloads: torrent.downloads,
-                size: torrent.size,
-                date: new Date(),
-                verified: true,
-                type: this.getResultType(torrent.series, episode),
-                accuracy: 'high'
-            }
-
-            // Добавляем magnet-ссылку если есть
-            if (torrent.magnet) {
-                result.link = torrent.magnet
-            }
-
-            return result
-        })
+    /**
+     * Маппинг торрента в формат Hayase
+     */
+    private mapTorrentToResult(torrent: AniLibriaTorrent, release: AniLibriaRelease, episode?: number): TorrentResult {
+        const title = `${release.name.main || release.name.english} [${torrent.quality.value}] ${torrent.description ? `- ${torrent.description}` : ''}`
+        
+        return {
+            title,
+            link: torrent.magnet,
+            hash: torrent.hash,
+            seeders: torrent.seeders,
+            leechers: torrent.leechers,
+            downloads: torrent.completed_times,
+            size: torrent.size,
+            date: new Date(torrent.created_at),
+            verified: true,
+            type: this.getResultType(torrent.description, episode),
+            accuracy: 'high'
+        }
     }
 
     /**
      * Определение типа результата
      */
-    private getResultType(series: string, episode?: number): 'batch' | 'best' | 'alt' {
-        // Если диапазон серий содержит тире или дефис - это пакет
-        if (series.includes('-') || series.includes('/')) {
+    private getResultType(description: string, episode?: number): 'batch' | 'best' | 'alt' {
+        // Если диапазон серий содержит тире — это пакет
+        if (description.includes('-')) {
             return 'batch'
         }
 
         // Если указан конкретный эпизод и он совпадает
         if (episode !== undefined) {
-            const episodeNum = parseInt(series, 10)
+            const episodeNum = parseInt(description, 10)
             if (!isNaN(episodeNum) && episodeNum === episode) {
                 return 'best'
             }
