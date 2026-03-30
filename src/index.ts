@@ -72,23 +72,35 @@ export default new class AniLibria {
         if (!titles.length) return []
 
         const searchQuery = titles[0]
-        const response = await fetch(
-            `${this.base}/title?search=${encodeURIComponent(searchQuery)}&limit=10`
-        )
+        const url = `${this.base}/title?search=${encodeURIComponent(searchQuery)}&limit=10`
+        
+        try {
+            const response = await fetch(url)
+            
+            if (!response.ok) {
+                console.error(`AniLibria API error: ${response.status} ${response.statusText}`)
+                return []
+            }
 
-        if (!response.ok) return []
+            const data = await response.json()
+            
+            if (!data.data || !Array.isArray(data.data)) {
+                console.error('AniLibria API: invalid response format', data)
+                return []
+            }
 
-        const data = await response.json()
-        if (!data.data || !Array.isArray(data.data)) return []
+            const results: TorrentResult[] = []
 
-        const results: TorrentResult[] = []
+            for (const title of data.data) {
+                const titleResults = this.extractTorrents(title, episode)
+                results.push(...titleResults)
+            }
 
-        for (const title of data.data) {
-            const titleResults = this.extractTorrents(title, episode)
-            results.push(...titleResults)
+            return results
+        } catch (error) {
+            console.error('AniLibria API fetch error:', error)
+            return []
         }
-
-        return results
     }
 
     /**
