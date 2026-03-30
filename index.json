@@ -7,11 +7,11 @@
     "accuracy": "high",
     "ratio": 0,
     "media": "both",
-    "languages": ["RU"],
+    "languages": ["all"],
     "nsfw": false,
     "icon": "https://anilibria.top/favicon.ico",
-    "update": "gh:wloodheart/hayase-anilibria",
-    "code": "gh:wloodheart/hayase-anilibria/dist/index.js",
+    "update": "https://raw.githubusercontent.com/wloodheart/hayase-anilibria/main/index.json",
+    "code": "https://raw.githubusercontent.com/wloodheart/hayase-anilibria/main/dist/index.js",
     "description": "Поиск аниме через AniLibria API с торрентами"
   }
 ]
